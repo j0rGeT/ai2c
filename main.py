@@ -23,6 +23,16 @@ except ImportError:
     VIDEO_GENERATION_AVAILABLE = False
     VideoGenerator = None
 
+# 图像生成器的可选导入
+try:
+    from src.image_generation.text_to_image import TextToImageGenerator
+    from src.image_generation.image_to_video import ImageToVideoGenerator
+    IMAGE_GENERATION_AVAILABLE = True
+except ImportError:
+    IMAGE_GENERATION_AVAILABLE = False
+    TextToImageGenerator = None
+    ImageToVideoGenerator = None
+
 class AI2CSystem:
     def __init__(self):
         self.content_generator = ContentGenerator()
@@ -34,6 +44,14 @@ class AI2CSystem:
             self.video_generator = VideoGenerator()
         else:
             self.video_generator = None
+        
+        # 图像生成器的可选初始化
+        if IMAGE_GENERATION_AVAILABLE:
+            self.text_to_image = TextToImageGenerator()
+            self.image_to_video = ImageToVideoGenerator()
+        else:
+            self.text_to_image = None
+            self.image_to_video = None
     
     def generate_article(self, topic: str, style: str = "informative", length: str = "medium", provider: str = None):
         print(f"正在生成关于'{topic}'的文章...")
@@ -153,6 +171,65 @@ class AI2CSystem:
             print(f"❌ 提示词优化失败: {str(e)}")
             return None
     
+    def generate_image(self, prompt: str, style: str = "写实", width: int = 512, height: int = 512, num_images: int = 1):
+        if not IMAGE_GENERATION_AVAILABLE or not self.text_to_image:
+            print("❌ 图像生成功能不可用")
+            print("💡 请安装图像生成依赖: pip install -r requirements-image.txt")
+            return None
+        
+        print(f"正在生成图像: {prompt[:30]}...")
+        
+        try:
+            result = self.text_to_image.generate_image(
+                prompt=prompt,
+                style=style,
+                width=width,
+                height=height,
+                num_images=num_images
+            )
+            
+            if result:
+                print(f"✅ 图像生成成功!")
+                print(f"🖼️ 生成数量: {len(result['images'])}")
+                print(f"📏 尺寸: {result['metadata']['width']}x{result['metadata']['height']}")
+                print(f"🎭 风格: {result['metadata']['style']}")
+                print(f"📁 保存路径: {result['saved_paths']}")
+            
+            return result
+        except Exception as e:
+            print(f"❌ 图像生成失败: {str(e)}")
+            return None
+    
+    def create_slideshow_video(self, image_paths: list, duration_per_image: float = 3.0):
+        if not (IMAGE_GENERATION_AVAILABLE and VIDEO_GENERATION_AVAILABLE):
+            print("❌ 图片转视频功能不可用")
+            print("💡 请安装依赖: pip install -r requirements-image.txt requirements-video.txt")
+            return None
+        
+        if not self.image_to_video:
+            print("❌ 图片转视频模块未初始化")
+            return None
+        
+        print(f"正在创建幻灯片视频，图片数量: {len(image_paths)}")
+        
+        try:
+            result = self.image_to_video.create_slideshow_video(
+                image_paths=image_paths,
+                duration_per_image=duration_per_image
+            )
+            
+            if result:
+                file_size = result['metadata']['file_size'] / (1024 * 1024)
+                print(f"✅ 幻灯片视频创建成功!")
+                print(f"🎥 视频保存至: {result['video_path']}")
+                print(f"⏱️ 总时长: {result['metadata']['total_duration']}秒")
+                print(f"💾 文件大小: {file_size:.1f} MB")
+            
+            return result
+        except Exception as e:
+            print(f"❌ 视频创建失败: {str(e)}")
+            return None
+    
     def interactive_mode(self):
         print("🤖 欢迎使用AI内容创作系统!")
         print("支持的功能:")
@@ -164,12 +241,18 @@ class AI2CSystem:
         else:
             print("4. 视频生成 (不可用 - 需要安装额外依赖)")
         print("5. 提示词优化")
+        if IMAGE_GENERATION_AVAILABLE:
+            print("6. 文本生成图片")
+            print("7. 图片转视频")
+        else:
+            print("6. 文本生成图片 (不可用 - 需要安装额外依赖)")
+            print("7. 图片转视频 (不可用 - 需要安装额外依赖)")
         print("0. 退出")
         print("-" * 50)
         
         while True:
             try:
-                choice = input("\n请选择功能 (0-5): ").strip()
+                choice = input("\n请选择功能 (0-7): ").strip()
                 
                 if choice == "0":
                     print("👋 感谢使用AI内容创作系统!")
@@ -184,8 +267,12 @@ class AI2CSystem:
                     self._interactive_video()
                 elif choice == "5":
                     self._interactive_prompt()
+                elif choice == "6":
+                    self._interactive_image_generation()
+                elif choice == "7":
+                    self._interactive_image_to_video()
                 else:
-                    print("❌ 无效选择，请输入0-5之间的数字")
+                    print("❌ 无效选择，请输入0-7之间的数字")
             
             except KeyboardInterrupt:
                 print("\n\n👋 程序已退出")
@@ -295,6 +382,60 @@ class AI2CSystem:
             print("\n" + "="*50)
             print("✨ 优化结果:")
             print(result['optimization'].get('result', '优化信息不可用'))
+    
+    def _interactive_image_generation(self):
+        if not IMAGE_GENERATION_AVAILABLE:
+            print("❌ 图像生成功能不可用")
+            print("💡 请安装图像生成依赖: pip install -r requirements-image.txt")
+            return
+        
+        prompt = input("请输入图片描述: ").strip()
+        if not prompt:
+            print("❌ 图片描述不能为空")
+            return
+        
+        print("艺术风格: 写实, 动漫, 油画, 水彩, 素描, 卡通, 科幻, 梦幻")
+        style = input("请选择艺术风格 (默认: 写实): ").strip() or "写实"
+        
+        try:
+            width = int(input("请输入图片宽度 (默认: 512): ").strip() or "512")
+            height = int(input("请输入图片高度 (默认: 512): ").strip() or "512")
+            num_images = int(input("请输入生成数量 (默认: 1): ").strip() or "1")
+        except ValueError:
+            width, height, num_images = 512, 512, 1
+        
+        self.generate_image(prompt, style, width, height, num_images)
+    
+    def _interactive_image_to_video(self):
+        if not (IMAGE_GENERATION_AVAILABLE and VIDEO_GENERATION_AVAILABLE):
+            print("❌ 图片转视频功能不可用")
+            print("💡 请安装依赖: pip install -r requirements-image.txt requirements-video.txt")
+            return
+        
+        print("图片转视频功能:")
+        print("请输入图片文件路径，每行一个，输入空行结束:")
+        
+        image_paths = []
+        while True:
+            path = input("图片路径: ").strip()
+            if not path:
+                break
+            if os.path.exists(path):
+                image_paths.append(path)
+                print(f"✅ 添加图片: {os.path.basename(path)}")
+            else:
+                print(f"❌ 文件不存在: {path}")
+        
+        if not image_paths:
+            print("❌ 没有有效的图片文件")
+            return
+        
+        try:
+            duration = float(input("每张图片显示时长/秒 (默认: 3.0): ").strip() or "3.0")
+        except ValueError:
+            duration = 3.0
+        
+        self.create_slideshow_video(image_paths, duration)
 
 def main():
     parser = argparse.ArgumentParser(description="AI内容创作系统")
@@ -303,6 +444,8 @@ def main():
     parser.add_argument("--audio", help="处理音频文件，指定文件路径")
     parser.add_argument("--video", help="生成视频，指定内容描述")
     parser.add_argument("--optimize-prompt", help="优化提示词")
+    parser.add_argument("--generate-image", help="生成图片，指定描述")
+    parser.add_argument("--image-to-video", help="图片转视频，指定图片目录")
     
     args = parser.parse_args()
     
@@ -318,6 +461,15 @@ def main():
         system.generate_video(args.video)
     elif args.optimize_prompt:
         system.optimize_prompt(args.optimize_prompt)
+    elif args.generate_image:
+        system.generate_image(args.generate_image)
+    elif args.image_to_video:
+        import glob
+        image_paths = glob.glob(os.path.join(args.image_to_video, "*.{jpg,jpeg,png,webp}"))
+        if image_paths:
+            system.create_slideshow_video(image_paths)
+        else:
+            print(f"❌ 在目录 {args.image_to_video} 中没有找到图片文件")
     else:
         parser.print_help()
 

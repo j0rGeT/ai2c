@@ -33,6 +33,14 @@ try:
 except ImportError:
     VIDEO_GENERATION_AVAILABLE = False
 
+# 可选图像生成模块
+try:
+    from src.image_generation.text_to_image import TextToImageGenerator
+    from src.image_generation.image_to_video import ImageToVideoGenerator
+    IMAGE_GENERATION_AVAILABLE = True
+except ImportError:
+    IMAGE_GENERATION_AVAILABLE = False
+
 # 初始化session state
 if 'content_generator' not in st.session_state:
     st.session_state.content_generator = ContentGenerator()
@@ -42,6 +50,10 @@ if 'prompt_optimizer' not in st.session_state:
     st.session_state.prompt_optimizer = PromptOptimizer()
 if VIDEO_GENERATION_AVAILABLE and 'video_generator' not in st.session_state:
     st.session_state.video_generator = VideoGenerator()
+if IMAGE_GENERATION_AVAILABLE and 'text_to_image' not in st.session_state:
+    st.session_state.text_to_image = TextToImageGenerator()
+if IMAGE_GENERATION_AVAILABLE and 'image_to_video' not in st.session_state:
+    st.session_state.image_to_video = ImageToVideoGenerator()
 
 # 应用自定义CSS样式
 custom_css()
@@ -62,6 +74,8 @@ def main():
             "📚 小说创作",
             "🎤 语音识别",
             "🎬 视频生成" if VIDEO_GENERATION_AVAILABLE else "🎬 视频生成 (不可用)",
+            "🎨 文本生成图片" if IMAGE_GENERATION_AVAILABLE else "🎨 文本生成图片 (不可用)",
+            "🎞️ 图片转视频" if IMAGE_GENERATION_AVAILABLE and VIDEO_GENERATION_AVAILABLE else "🎞️ 图片转视频 (不可用)",
             "✨ 提示词优化"
         ]
     )
@@ -84,6 +98,10 @@ def main():
         show_speech_recognition()
     elif page.startswith("🎬 视频生成"):
         show_video_generation()
+    elif page.startswith("🎨 文本生成图片"):
+        show_text_to_image()
+    elif page.startswith("🎞️ 图片转视频"):
+        show_image_to_video()
     elif page == "✨ 提示词优化":
         show_prompt_optimization()
 
@@ -104,6 +122,8 @@ def show_home_page():
         - **📚 小说创作**: 章节生成和故事大纲创建
         - **🎤 语音处理**: Whisper语音识别和智能摘要
         - **🎬 视频制作**: 文本转视频，自动脚本生成
+        - **🎨 图像生成**: AI文本生成图片，多种风格支持
+        - **🎞️ 图片转视频**: 静态图片转动态视频，幻灯片制作
         - **✨ 提示词优化**: 智能分析和优化提示词质量
         
         ### 🛠 技术特性
@@ -120,8 +140,8 @@ def show_home_page():
         """)
         
         # 显示一些使用统计（示例）
-        st.metric("支持的文件格式", "10+")
-        st.metric("功能模块", "5个")
+        st.metric("支持的文件格式", "15+")
+        st.metric("功能模块", "7个")
         st.metric("支持语言", "中英文")
         
         st.markdown("### 🔗 快速链接")
@@ -130,6 +150,12 @@ def show_home_page():
             st.rerun()
         if st.button("🎤 处理音频", use_container_width=True):
             st.session_state.page = "🎤 语音识别"
+            st.rerun()
+        if st.button("🎨 生成图片", use_container_width=True):
+            st.session_state.page = "🎨 文本生成图片"
+            st.rerun()
+        if st.button("🎞️ 制作视频", use_container_width=True):
+            st.session_state.page = "🎞️ 图片转视频"
             st.rerun()
 
 def show_article_generation():
@@ -770,6 +796,469 @@ def show_prompt_optimization():
         
         elif submitted:
             st.warning("⚠️ 请输入任务描述")
+
+def show_text_to_image():
+    """文本生成图片页面"""
+    st.header("🎨 智能文本生成图片")
+    
+    if not IMAGE_GENERATION_AVAILABLE:
+        st.error("""
+        ❌ 图像生成功能不可用
+        
+        请安装图像生成依赖：
+        ```bash
+        pip install -r requirements-image.txt
+        ```
+        
+        注意：首次使用需要下载大型AI模型，请确保有足够的存储空间和网络带宽。
+        """)
+        return
+    
+    st.markdown("""
+    使用AI根据文本描述生成高质量图片。
+    支持多种艺术风格和尺寸设定。
+    """)
+    
+    with st.form("image_generation_form"):
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            prompt = st.text_area(
+                "图片描述 *",
+                height=120,
+                placeholder="例如: 一只可爱的橘猫坐在窗台上，阳光透过窗户照在它身上，背景是蓝天白云",
+                help="详细描述您想要生成的图片内容"
+            )
+            
+            negative_prompt = st.text_area(
+                "负面提示词（可选）",
+                height=60,
+                placeholder="不希望出现的内容，例如: 模糊, 低质量, 变形",
+                help="描述不希望在图片中出现的元素"
+            )
+        
+        with col2:
+            style = st.selectbox(
+                "艺术风格",
+                ["写实", "动漫", "油画", "水彩", "素描", "卡通", "科幻", "梦幻"],
+                help="选择图片的艺术风格"
+            )
+            
+            model_name = st.selectbox(
+                "AI模型",
+                ["sd15", "sdxl", "sd21"],
+                format_func=lambda x: {
+                    "sd15": "Stable Diffusion 1.5 (快速)",
+                    "sdxl": "Stable Diffusion XL (高质量)",
+                    "sd21": "Stable Diffusion 2.1 (平衡)"
+                }[x],
+                help="选择使用的AI模型"
+            )
+            
+            col2_1, col2_2 = st.columns(2)
+            with col2_1:
+                width = st.selectbox("宽度", [512, 768, 1024], index=0)
+                num_images = st.slider("生成数量", 1, 4, 1)
+            
+            with col2_2:
+                height = st.selectbox("高度", [512, 768, 1024], index=0)
+                steps = st.slider("生成步数", 10, 50, 20, help="更多步数=更高质量,但更慢")
+        
+        advanced = st.expander("🔧 高级设置")
+        with advanced:
+            col3_1, col3_2 = st.columns(2)
+            with col3_1:
+                guidance_scale = st.slider(
+                    "引导强度", 
+                    1.0, 20.0, 7.5, 0.5,
+                    help="控制AI对提示词的遵循程度"
+                )
+                optimize_prompt = st.checkbox("优化提示词", value=True, help="使用AI优化您的提示词")
+            with col3_2:
+                seed = st.number_input(
+                    "随机种子 (可选)", 
+                    min_value=0, max_value=2**32-1, value=0,
+                    help="设置为0使用随机种子，固定数值可重现结果"
+                )
+        
+        submitted = st.form_submit_button("🎨 生成图片", use_container_width=True)
+    
+    if submitted and prompt:
+        with st.spinner("正在生成图片，请稍候..."):
+            try:
+                result = st.session_state.text_to_image.generate_image(
+                    prompt=prompt,
+                    style=style,
+                    width=width,
+                    height=height,
+                    num_images=num_images,
+                    steps=steps,
+                    guidance_scale=guidance_scale,
+                    negative_prompt=negative_prompt if negative_prompt else None,
+                    seed=seed if seed > 0 else None,
+                    optimize_prompt=optimize_prompt,
+                    model_name=model_name
+                )
+                
+                if result:
+                    st.success("✅ 图片生成成功！")
+                    
+                    # 显示生成的图片
+                    st.markdown("### 🖼️ 生成结果")
+                    
+                    if len(result['images']) == 1:
+                        st.image(result['images'][0], caption=f"生成的图片", use_column_width=True)
+                    else:
+                        # 多图显示
+                        cols = st.columns(min(len(result['images']), 2))
+                        for i, image in enumerate(result['images']):
+                            with cols[i % len(cols)]:
+                                st.image(image, caption=f"图片 {i+1}", use_column_width=True)
+                    
+                    # 显示生成信息
+                    with st.expander("📊 生成信息"):
+                        metadata = result['metadata']
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            st.metric("尺寸", f"{metadata['width']}×{metadata['height']}")
+                            st.metric("生成步数", metadata['steps'])
+                        
+                        with col2:
+                            st.metric("风格", metadata['style'])
+                            st.metric("引导强度", metadata['guidance_scale'])
+                        
+                        with col3:
+                            st.metric("随机种子", metadata['seed'])
+                            st.metric("AI模型", metadata['model_name'])
+                        
+                        st.text_area("优化后的提示词", metadata['prompt'], height=100, key="optimized_prompt_display")
+                    
+                    # 下载选项
+                    st.markdown("### 📥 下载图片")
+                    for i, (image, path) in enumerate(zip(result['images'], result['saved_paths'])):
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.text(f"图片 {i+1}: {os.path.basename(path)}")
+                        with col2:
+                            # 将PIL图像转换为字节
+                            img_bytes = io.BytesIO()
+                            image.save(img_bytes, format='PNG')
+                            img_bytes = img_bytes.getvalue()
+                            
+                            st.download_button(
+                                "下载",
+                                data=img_bytes,
+                                file_name=os.path.basename(path),
+                                mime="image/png",
+                                key=f"download_img_{i}"
+                            )
+            
+            except Exception as e:
+                st.error(f"❌ 生成失败: {str(e)}")
+                if "CUDA" in str(e) or "memory" in str(e).lower():
+                    st.info("💡 提示：如果遇到显存不足错误，可以尝试减少生成步数或降低图片尺寸")
+    
+    elif submitted:
+        st.warning("⚠️ 请输入图片描述")
+
+def show_image_to_video():
+    """图片转视频页面"""
+    st.header("🎞️ 智能图片转视频")
+    
+    if not (IMAGE_GENERATION_AVAILABLE and VIDEO_GENERATION_AVAILABLE):
+        st.error("""
+        ❌ 图片转视频功能不可用
+        
+        需要安装以下依赖：
+        ```bash
+        pip install -r requirements-image.txt
+        pip install -r requirements-video.txt
+        ```
+        """)
+        return
+    
+    st.markdown("""
+    将静态图片转换为动态视频，支持多种效果和转场。
+    可以创建幻灯片、动画效果或对比视频。
+    """)
+    
+    tab1, tab2, tab3 = st.tabs(["📸 幻灯片视频", "🎬 单图动画", "⚖️ 对比视频"])
+    
+    with tab1:
+        st.subheader("创建幻灯片视频")
+        
+        uploaded_files = st.file_uploader(
+            "上传图片文件",
+            type=['png', 'jpg', 'jpeg', 'webp'],
+            accept_multiple_files=True,
+            help="支持多张图片，将按上传顺序排列"
+        )
+        
+        if uploaded_files:
+            st.success(f"已上传 {len(uploaded_files)} 张图片")
+            
+            # 显示预览
+            with st.expander("🔍 图片预览"):
+                cols = st.columns(min(len(uploaded_files), 4))
+                for i, file in enumerate(uploaded_files):
+                    with cols[i % len(cols)]:
+                        st.image(file, caption=file.name, use_column_width=True)
+            
+            # 设置参数
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                duration_per_image = st.slider(
+                    "每张图片显示时长 (秒)", 
+                    1.0, 10.0, 3.0, 0.5,
+                    help="每张图片在视频中的显示时间"
+                )
+                
+                transition_duration = st.slider(
+                    "转场时长 (秒)", 
+                    0.0, 2.0, 0.5, 0.1,
+                    help="图片之间的淡入淡出时间"
+                )
+            
+            with col2:
+                output_width = st.selectbox("视频宽度", [1280, 1920, 3840], index=1)
+                output_height = st.selectbox("视频高度", [720, 1080, 2160], index=1)
+                fps = st.selectbox("帧率", [24, 30, 60], index=1)
+            
+            # 背景音乐
+            background_music = st.file_uploader(
+                "背景音乐 (可选)",
+                type=['mp3', 'wav', 'aac'],
+                help="为视频添加背景音乐"
+            )
+            
+            if st.button("🎬 创建幻灯片视频", use_container_width=True):
+                with st.spinner("正在创建幻灯片视频..."):
+                    try:
+                        # 保存上传的图片
+                        temp_image_paths = []
+                        for file in uploaded_files:
+                            temp_path = os.path.join("./temp", f"slideshow_{file.name}")
+                            with open(temp_path, "wb") as f:
+                                f.write(file.read())
+                            temp_image_paths.append(temp_path)
+                        
+                        # 处理背景音乐
+                        music_path = None
+                        if background_music:
+                            music_path = os.path.join("./temp", f"bg_music_{background_music.name}")
+                            with open(music_path, "wb") as f:
+                                f.write(background_music.read())
+                        
+                        # 生成视频
+                        result = st.session_state.image_to_video.create_slideshow_video(
+                            image_paths=temp_image_paths,
+                            duration_per_image=duration_per_image,
+                            transition_duration=transition_duration,
+                            output_size=(output_width, output_height),
+                            fps=fps,
+                            background_music=music_path
+                        )
+                        
+                        if result:
+                            st.success("✅ 幻灯片视频创建成功！")
+                            
+                            # 显示视频信息
+                            metadata = result['metadata']
+                            col1, col2, col3 = st.columns(3)
+                            
+                            with col1:
+                                st.metric("总时长", f"{metadata['total_duration']:.1f}秒")
+                            with col2:
+                                file_size = metadata['file_size'] / (1024 * 1024)
+                                st.metric("文件大小", f"{file_size:.1f}MB")
+                            with col3:
+                                st.metric("图片数量", metadata['image_count'])
+                            
+                            # 视频预览
+                            if os.path.exists(result['video_path']):
+                                st.markdown("### 🎥 视频预览")
+                                st.video(result['video_path'])
+                                
+                                # 下载按钮
+                                with open(result['video_path'], "rb") as video_file:
+                                    st.download_button(
+                                        "📥 下载视频",
+                                        video_file.read(),
+                                        file_name=os.path.basename(result['video_path']),
+                                        mime="video/mp4"
+                                    )
+                        
+                        # 清理临时文件
+                        for temp_path in temp_image_paths:
+                            if os.path.exists(temp_path):
+                                os.remove(temp_path)
+                        if music_path and os.path.exists(music_path):
+                            os.remove(music_path)
+                    
+                    except Exception as e:
+                        st.error(f"❌ 视频创建失败: {str(e)}")
+    
+    with tab2:
+        st.subheader("单图动画视频")
+        
+        uploaded_file = st.file_uploader(
+            "上传单张图片",
+            type=['png', 'jpg', 'jpeg', 'webp'],
+            key="single_image"
+        )
+        
+        if uploaded_file:
+            st.image(uploaded_file, caption="预览图片", use_column_width=True)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                animation_type = st.selectbox(
+                    "动画效果",
+                    ["zoom", "pan", "fade"],
+                    format_func=lambda x: {
+                        "zoom": "缩放效果",
+                        "pan": "平移效果", 
+                        "fade": "淡入淡出"
+                    }[x]
+                )
+                
+                duration = st.slider("视频时长 (秒)", 3.0, 30.0, 5.0, 1.0)
+            
+            with col2:
+                output_width = st.selectbox("宽度", [1280, 1920, 3840], index=1, key="anim_width")
+                output_height = st.selectbox("高度", [720, 1080, 2160], index=1, key="anim_height")
+                fps = st.selectbox("帧率", [24, 30, 60], index=1, key="anim_fps")
+            
+            if st.button("🎬 创建动画视频", use_container_width=True):
+                with st.spinner(f"正在创建{animation_type}动画视频..."):
+                    try:
+                        # 保存上传的图片
+                        from PIL import Image
+                        image = Image.open(uploaded_file)
+                        
+                        result = st.session_state.image_to_video.create_animated_video(
+                            image_path=image,
+                            animation_type=animation_type,
+                            duration=duration,
+                            output_size=(output_width, output_height),
+                            fps=fps
+                        )
+                        
+                        if result:
+                            st.success("✅ 动画视频创建成功！")
+                            
+                            # 显示视频信息
+                            metadata = result['metadata']
+                            col1, col2, col3 = st.columns(3)
+                            
+                            with col1:
+                                st.metric("时长", f"{metadata['duration']}秒")
+                            with col2:
+                                file_size = metadata['file_size'] / (1024 * 1024)
+                                st.metric("文件大小", f"{file_size:.1f}MB")
+                            with col3:
+                                st.metric("动画效果", metadata['animation_type'])
+                            
+                            # 视频预览和下载
+                            if os.path.exists(result['video_path']):
+                                st.markdown("### 🎥 视频预览")
+                                st.video(result['video_path'])
+                                
+                                with open(result['video_path'], "rb") as video_file:
+                                    st.download_button(
+                                        "📥 下载视频",
+                                        video_file.read(),
+                                        file_name=os.path.basename(result['video_path']),
+                                        mime="video/mp4",
+                                        key="download_animated"
+                                    )
+                    
+                    except Exception as e:
+                        st.error(f"❌ 视频创建失败: {str(e)}")
+    
+    with tab3:
+        st.subheader("对比视频")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**对比前图片**")
+            before_image = st.file_uploader(
+                "上传前图片",
+                type=['png', 'jpg', 'jpeg', 'webp'],
+                key="before_image"
+            )
+            if before_image:
+                st.image(before_image, caption="对比前", use_column_width=True)
+        
+        with col2:
+            st.markdown("**对比后图片**")
+            after_image = st.file_uploader(
+                "上传后图片", 
+                type=['png', 'jpg', 'jpeg', 'webp'],
+                key="after_image"
+            )
+            if after_image:
+                st.image(after_image, caption="对比后", use_column_width=True)
+        
+        if before_image and after_image:
+            comparison_type = st.selectbox(
+                "对比方式",
+                ["side_by_side", "transition", "before_after"],
+                format_func=lambda x: {
+                    "side_by_side": "并排对比",
+                    "transition": "转场对比",
+                    "before_after": "前后对比"
+                }[x]
+            )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                duration = st.slider("视频总时长 (秒)", 5.0, 30.0, 10.0, 1.0, key="comp_duration")
+            with col2:
+                transition_point = st.slider(
+                    "转场时间点 (秒)", 
+                    1.0, duration-1.0, duration/2, 0.5,
+                    disabled=comparison_type != "transition",
+                    help="仅在转场对比模式下有效"
+                )
+            
+            if st.button("🎬 创建对比视频", use_container_width=True):
+                with st.spinner("正在创建对比视频..."):
+                    try:
+                        from PIL import Image
+                        before_img = Image.open(before_image)
+                        after_img = Image.open(after_image)
+                        
+                        result = st.session_state.image_to_video.create_comparison_video(
+                            before_image=before_img,
+                            after_image=after_img,
+                            comparison_type=comparison_type,
+                            duration=duration,
+                            transition_point=transition_point if comparison_type == "transition" else None
+                        )
+                        
+                        if result:
+                            st.success("✅ 对比视频创建成功！")
+                            
+                            if os.path.exists(result['video_path']):
+                                st.markdown("### 🎥 视频预览")
+                                st.video(result['video_path'])
+                                
+                                with open(result['video_path'], "rb") as video_file:
+                                    st.download_button(
+                                        "📥 下载视频",
+                                        video_file.read(),
+                                        file_name=os.path.basename(result['video_path']),
+                                        mime="video/mp4",
+                                        key="download_comparison"
+                                    )
+                    
+                    except Exception as e:
+                        st.error(f"❌ 视频创建失败: {str(e)}")
 
 if __name__ == "__main__":
     main()

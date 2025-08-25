@@ -28,7 +28,7 @@ if [ ! -f ".env" ]; then
 fi
 
 # 创建输出目录
-mkdir -p outputs/{videos,audio,articles}
+mkdir -p outputs/{videos,audio,articles,images}
 mkdir -p temp
 
 # 启动Web界面
