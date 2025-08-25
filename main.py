@@ -27,11 +27,13 @@ except ImportError:
 try:
     from src.image_generation.text_to_image import TextToImageGenerator
     from src.image_generation.image_to_video import ImageToVideoGenerator
+    from src.image_generation.image_editor import ImageEditor
     IMAGE_GENERATION_AVAILABLE = True
 except ImportError:
     IMAGE_GENERATION_AVAILABLE = False
     TextToImageGenerator = None
     ImageToVideoGenerator = None
+    ImageEditor = None
 
 class AI2CSystem:
     def __init__(self):
@@ -49,9 +51,11 @@ class AI2CSystem:
         if IMAGE_GENERATION_AVAILABLE:
             self.text_to_image = TextToImageGenerator()
             self.image_to_video = ImageToVideoGenerator()
+            self.image_editor = ImageEditor()
         else:
             self.text_to_image = None
             self.image_to_video = None
+            self.image_editor = None
     
     def generate_article(self, topic: str, style: str = "informative", length: str = "medium", provider: str = None):
         print(f"正在生成关于'{topic}'的文章...")
@@ -230,6 +234,228 @@ class AI2CSystem:
             print(f"❌ 视频创建失败: {str(e)}")
             return None
     
+    def edit_image(self, image_path: str, edit_prompt: str):
+        if not IMAGE_GENERATION_AVAILABLE or not self.image_editor:
+            print("❌ 图像编辑功能不可用")
+            print("💡 请安装图像编辑依赖: pip install -r requirements-image.txt")
+            return None
+        
+        if not os.path.exists(image_path):
+            print(f"❌ 图像文件不存在: {image_path}")
+            return None
+        
+        print(f"正在编辑图像: {os.path.basename(image_path)}")
+        
+        try:
+            result = self.image_editor.edit_image(
+                image=image_path,
+                edit_prompt=edit_prompt
+            )
+            
+            if result:
+                print(f"✅ 图像编辑成功!")
+                print(f"🖼️ 原图: {image_path}")
+                print(f"📁 编辑后保存至: {result['output_path']}")
+                print(f"🎯 编辑指令: {result['metadata']['edit_prompt']}")
+            
+            return result
+        except Exception as e:
+            print(f"❌ 图像编辑失败: {str(e)}")
+            return None
+    
+    def generate_avatar(self, avatar_type: str, description: str = ""):
+        """生成虚拟形象"""
+        if not IMAGE_GENERATION_AVAILABLE or not self.image_editor:
+            print("❌ 图像编辑功能不可用")
+            print("💡 请安装图像编辑依赖: pip install -r requirements-image.txt")
+            return None
+        
+        print(f"正在生成虚拟形象: {avatar_type}")
+        
+        try:
+            result = self.image_editor.generate_avatar(
+                avatar_type=avatar_type,
+                description=description
+            )
+            
+            if result:
+                print(f"✅ 虚拟形象生成成功!")
+                print(f"📁 保存至: {result['output_path']}")
+                print(f"👤 形象类型: {avatar_type}")
+                if description:
+                    print(f"📝 描述: {description}")
+            
+            return result
+        except Exception as e:
+            print(f"❌ 虚拟形象生成失败: {str(e)}")
+            return None
+    
+    def ai_remove_object(self, image_path: str, remove_type: str, target_object: str = ""):
+        """AI消除功能"""
+        if not IMAGE_GENERATION_AVAILABLE or not self.image_editor:
+            print("❌ 图像编辑功能不可用")
+            print("💡 请安装图像编辑依赖: pip install -r requirements-image.txt")
+            return None
+        
+        if not os.path.exists(image_path):
+            print(f"❌ 图像文件不存在: {image_path}")
+            return None
+        
+        print(f"正在执行AI消除: {remove_type}")
+        if target_object:
+            print(f"目标对象: {target_object}")
+        
+        try:
+            result = self.image_editor.ai_remove(
+                image=image_path,
+                remove_type=remove_type,
+                target_object=target_object
+            )
+            
+            if result:
+                print(f"✅ AI消除成功!")
+                print(f"🖼️ 原图: {image_path}")
+                print(f"📁 保存至: {result['output_path']}")
+            
+            return result
+        except Exception as e:
+            print(f"❌ AI消除失败: {str(e)}")
+            return None
+    
+    def ai_redraw_area(self, image_path: str, redraw_type: str, description: str):
+        """AI重绘功能"""
+        if not IMAGE_GENERATION_AVAILABLE or not self.image_editor:
+            print("❌ 图像编辑功能不可用")
+            print("💡 请安装图像编辑依赖: pip install -r requirements-image.txt")
+            return None
+        
+        if not os.path.exists(image_path):
+            print(f"❌ 图像文件不存在: {image_path}")
+            return None
+        
+        print(f"正在执行AI重绘: {redraw_type}")
+        print(f"重绘描述: {description}")
+        
+        try:
+            result = self.image_editor.ai_redraw(
+                image=image_path,
+                redraw_type=redraw_type,
+                description=description
+            )
+            
+            if result:
+                print(f"✅ AI重绘成功!")
+                print(f"🖼️ 原图: {image_path}")
+                print(f"📁 保存至: {result['output_path']}")
+            
+            return result
+        except Exception as e:
+            print(f"❌ AI重绘失败: {str(e)}")
+            return None
+    
+    def create_virtual_scene(self, image_path: str, scene_type: str, scene_elements: str = ""):
+        """虚拟场景生成"""
+        if not IMAGE_GENERATION_AVAILABLE or not self.image_editor:
+            print("❌ 图像编辑功能不可用")
+            print("💡 请安装图像编辑依赖: pip install -r requirements-image.txt")
+            return None
+        
+        if not os.path.exists(image_path):
+            print(f"❌ 图像文件不存在: {image_path}")
+            return None
+        
+        print(f"正在生成虚拟场景: {scene_type}")
+        if scene_elements:
+            print(f"场景元素: {scene_elements}")
+        
+        try:
+            result = self.image_editor.virtual_scene(
+                image=image_path,
+                scene_type=scene_type,
+                scene_elements=scene_elements
+            )
+            
+            if result:
+                print(f"✅ 虚拟场景生成成功!")
+                print(f"🖼️ 原图: {image_path}")
+                print(f"📁 保存至: {result['output_path']}")
+            
+            return result
+        except Exception as e:
+            print(f"❌ 虚拟场景生成失败: {str(e)}")
+            return None
+    
+    def simulate_outfit(self, image_path: str, outfit_type: str, outfit_details: str):
+        """穿搭模拟"""
+        if not IMAGE_GENERATION_AVAILABLE or not self.image_editor:
+            print("❌ 图像编辑功能不可用")
+            print("💡 请安装图像编辑依赖: pip install -r requirements-image.txt")
+            return None
+        
+        if not os.path.exists(image_path):
+            print(f"❌ 图像文件不存在: {image_path}")
+            return None
+        
+        print(f"正在模拟穿搭: {outfit_type}")
+        print(f"穿搭详情: {outfit_details}")
+        
+        try:
+            result = self.image_editor.outfit_simulation(
+                image=image_path,
+                outfit_type=outfit_type,
+                outfit_details=outfit_details
+            )
+            
+            if result:
+                print(f"✅ 穿搭模拟成功!")
+                print(f"🖼️ 原图: {image_path}")
+                print(f"📁 保存至: {result['output_path']}")
+            
+            return result
+        except Exception as e:
+            print(f"❌ 穿搭模拟失败: {str(e)}")
+            return None
+    
+    def design_text_poster(self, image_path: str, design_type: str, content: str, style: str = ""):
+        """文字设计和海报编辑"""
+        if not IMAGE_GENERATION_AVAILABLE or not self.image_editor:
+            print("❌ 图像编辑功能不可用")
+            print("💡 请安装图像编辑依赖: pip install -r requirements-image.txt")
+            return None
+        
+        if not os.path.exists(image_path):
+            print(f"❌ 图像文件不存在: {image_path}")
+            return None
+        
+        print(f"正在设计{design_type}: {content}")
+        if style:
+            print(f"设计风格: {style}")
+        
+        try:
+            if design_type in ["文字设计", "艺术字体", "标题设计", "logo设计"]:
+                result = self.image_editor.text_design(
+                    image=image_path,
+                    text_type=design_type,
+                    text_content=content,
+                    font_style=style or "modern"
+                )
+            else:
+                result = self.image_editor.poster_design(
+                    image=image_path,
+                    poster_type=design_type,
+                    theme=style or content
+                )
+            
+            if result:
+                print(f"✅ {design_type}设计成功!")
+                print(f"🖼️ 原图: {image_path}")
+                print(f"📁 保存至: {result['output_path']}")
+            
+            return result
+        except Exception as e:
+            print(f"❌ {design_type}设计失败: {str(e)}")
+            return None
+    
     def interactive_mode(self):
         print("🤖 欢迎使用AI内容创作系统!")
         print("支持的功能:")
@@ -243,16 +469,18 @@ class AI2CSystem:
         print("5. 提示词优化")
         if IMAGE_GENERATION_AVAILABLE:
             print("6. 文本生成图片")
-            print("7. 图片转视频")
+            print("7. 图像编辑")
+            print("8. 图片转视频")
         else:
             print("6. 文本生成图片 (不可用 - 需要安装额外依赖)")
-            print("7. 图片转视频 (不可用 - 需要安装额外依赖)")
+            print("7. 图像编辑 (不可用 - 需要安装额外依赖)")
+            print("8. 图片转视频 (不可用 - 需要安装额外依赖)")
         print("0. 退出")
         print("-" * 50)
         
         while True:
             try:
-                choice = input("\n请选择功能 (0-7): ").strip()
+                choice = input("\n请选择功能 (0-8): ").strip()
                 
                 if choice == "0":
                     print("👋 感谢使用AI内容创作系统!")
@@ -270,9 +498,11 @@ class AI2CSystem:
                 elif choice == "6":
                     self._interactive_image_generation()
                 elif choice == "7":
+                    self._interactive_image_editing()
+                elif choice == "8":
                     self._interactive_image_to_video()
                 else:
-                    print("❌ 无效选择，请输入0-7之间的数字")
+                    print("❌ 无效选择，请输入0-8之间的数字")
             
             except KeyboardInterrupt:
                 print("\n\n👋 程序已退出")
@@ -436,6 +666,93 @@ class AI2CSystem:
             duration = 3.0
         
         self.create_slideshow_video(image_paths, duration)
+    
+    def _interactive_image_editing(self):
+        if not IMAGE_GENERATION_AVAILABLE:
+            print("❌ 图像编辑功能不可用")
+            print("💡 请安装图像编辑依赖: pip install -r requirements-image.txt")
+            return
+        
+        image_path = input("请输入图片路径: ").strip()
+        if not image_path:
+            print("❌ 图片路径不能为空")
+            return
+        
+        if not os.path.exists(image_path):
+            print(f"❌ 图片文件不存在: {image_path}")
+            return
+        
+        print("\n编辑模式:")
+        print("1. 自由编辑")
+        print("2. 视角转换")
+        print("3. 风格变换")
+        print("4. 环境变换")
+        print("5. 对象变换")
+        
+        mode = input("请选择编辑模式 (1-5): ").strip()
+        
+        if mode == "1":
+            edit_prompt = input("请输入编辑指令: ").strip()
+            if edit_prompt:
+                self.edit_image(image_path, edit_prompt)
+            else:
+                print("❌ 编辑指令不能为空")
+        
+        elif mode == "2":
+            print("视角选项: 从正面看, 从侧面看, 从背面看, 从上往下看, 从下往上看, 俯视图, 仰视图")
+            view = input("请选择目标视角: ").strip()
+            if view:
+                try:
+                    result = self.image_editor.perspective_transform(image_path, view)
+                    if result:
+                        print(f"✅ 视角转换成功! 保存至: {result['output_path']}")
+                except Exception as e:
+                    print(f"❌ 视角转换失败: {e}")
+            else:
+                print("❌ 目标视角不能为空")
+        
+        elif mode == "3":
+            print("风格选项: 油画风格, 水彩风格, 素描风格, 动漫风格, 照片风格, 印象派, 抽象艺术")
+            style = input("请选择目标风格: ").strip()
+            if style:
+                try:
+                    result = self.image_editor.style_transform(image_path, style)
+                    if result:
+                        print(f"✅ 风格变换成功! 保存至: {result['output_path']}")
+                except Exception as e:
+                    print(f"❌ 风格变换失败: {e}")
+            else:
+                print("❌ 目标风格不能为空")
+        
+        elif mode == "4":
+            print("环境选项: 白天转夜晚, 夜晚转白天, 晴天转雨天, 室内转室外, 现代转古代, 城市转乡村, 春天转秋天")
+            env = input("请选择环境变换: ").strip()
+            if env:
+                try:
+                    result = self.image_editor.environment_transform(image_path, env)
+                    if result:
+                        print(f"✅ 环境变换成功! 保存至: {result['output_path']}")
+                except Exception as e:
+                    print(f"❌ 环境变换失败: {e}")
+            else:
+                print("❌ 环境变换不能为空")
+        
+        elif mode == "5":
+            print("变换类型: 改变颜色, 改变材质, 改变大小, 添加装饰, 改变表情, 改变姿态, 改变服装")
+            transform_type = input("请选择变换类型: ").strip()
+            transform_value = input("请输入变换目标值: ").strip()
+            if transform_type and transform_value:
+                try:
+                    result = self.image_editor.object_transform(image_path, transform_type, transform_value)
+                    if result:
+                        print(f"✅ 对象变换成功! 保存至: {result['output_path']}")
+                except Exception as e:
+                    print(f"❌ 对象变换失败: {e}")
+            else:
+                print("❌ 变换类型和目标值都不能为空")
+        
+        else:
+            print("❌ 无效选择")
 
 def main():
     parser = argparse.ArgumentParser(description="AI内容创作系统")
@@ -445,7 +762,14 @@ def main():
     parser.add_argument("--video", help="生成视频，指定内容描述")
     parser.add_argument("--optimize-prompt", help="优化提示词")
     parser.add_argument("--generate-image", help="生成图片，指定描述")
+    parser.add_argument("--edit-image", help="编辑图片，格式：图片路径,编辑指令")
     parser.add_argument("--image-to-video", help="图片转视频，指定图片目录")
+    parser.add_argument("--generate-avatar", help="生成虚拟形象，格式：形象类型,描述")
+    parser.add_argument("--ai-remove", help="AI消除，格式：图片路径,消除类型,目标对象")
+    parser.add_argument("--ai-redraw", help="AI重绘，格式：图片路径,重绘类型,描述")
+    parser.add_argument("--virtual-scene", help="虚拟场景，格式：图片路径,场景类型,场景元素")
+    parser.add_argument("--outfit-sim", help="穿搭模拟，格式：图片路径,穿搭类型,穿搭详情")
+    parser.add_argument("--text-poster", help="文字海报，格式：图片路径,设计类型,内容,风格")
     
     args = parser.parse_args()
     
@@ -463,6 +787,12 @@ def main():
         system.optimize_prompt(args.optimize_prompt)
     elif args.generate_image:
         system.generate_image(args.generate_image)
+    elif args.edit_image:
+        if "," in args.edit_image:
+            image_path, edit_prompt = args.edit_image.split(",", 1)
+            system.edit_image(image_path.strip(), edit_prompt.strip())
+        else:
+            print("❌ 请使用格式: --edit-image '图片路径,编辑指令'")
     elif args.image_to_video:
         import glob
         image_paths = glob.glob(os.path.join(args.image_to_video, "*.{jpg,jpeg,png,webp}"))
@@ -470,6 +800,58 @@ def main():
             system.create_slideshow_video(image_paths)
         else:
             print(f"❌ 在目录 {args.image_to_video} 中没有找到图片文件")
+    elif args.generate_avatar:
+        if "," in args.generate_avatar:
+            avatar_type, description = args.generate_avatar.split(",", 1)
+            system.generate_avatar(avatar_type.strip(), description.strip())
+        else:
+            system.generate_avatar(args.generate_avatar.strip())
+    elif args.ai_remove:
+        parts = args.ai_remove.split(",")
+        if len(parts) >= 2:
+            image_path = parts[0].strip()
+            remove_type = parts[1].strip()
+            target_object = parts[2].strip() if len(parts) > 2 else ""
+            system.ai_remove_object(image_path, remove_type, target_object)
+        else:
+            print("❌ 请使用格式: --ai-remove '图片路径,消除类型,目标对象'")
+    elif args.ai_redraw:
+        parts = args.ai_redraw.split(",")
+        if len(parts) >= 3:
+            image_path = parts[0].strip()
+            redraw_type = parts[1].strip()
+            description = parts[2].strip()
+            system.ai_redraw_area(image_path, redraw_type, description)
+        else:
+            print("❌ 请使用格式: --ai-redraw '图片路径,重绘类型,描述'")
+    elif args.virtual_scene:
+        parts = args.virtual_scene.split(",")
+        if len(parts) >= 2:
+            image_path = parts[0].strip()
+            scene_type = parts[1].strip()
+            scene_elements = parts[2].strip() if len(parts) > 2 else ""
+            system.create_virtual_scene(image_path, scene_type, scene_elements)
+        else:
+            print("❌ 请使用格式: --virtual-scene '图片路径,场景类型,场景元素'")
+    elif args.outfit_sim:
+        parts = args.outfit_sim.split(",")
+        if len(parts) >= 3:
+            image_path = parts[0].strip()
+            outfit_type = parts[1].strip()
+            outfit_details = parts[2].strip()
+            system.simulate_outfit(image_path, outfit_type, outfit_details)
+        else:
+            print("❌ 请使用格式: --outfit-sim '图片路径,穿搭类型,穿搭详情'")
+    elif args.text_poster:
+        parts = args.text_poster.split(",")
+        if len(parts) >= 3:
+            image_path = parts[0].strip()
+            design_type = parts[1].strip()
+            content = parts[2].strip()
+            style = parts[3].strip() if len(parts) > 3 else ""
+            system.design_text_poster(image_path, design_type, content, style)
+        else:
+            print("❌ 请使用格式: --text-poster '图片路径,设计类型,内容,风格'")
     else:
         parser.print_help()
 

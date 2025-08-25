@@ -12,6 +12,8 @@ import time
 from datetime import datetime
 from typing import Dict, Any, Optional
 
+from PIL import Image
+
 # 页面配置
 st.set_page_config(
     page_title="AI内容创作系统",
@@ -37,6 +39,7 @@ except ImportError:
 try:
     from src.image_generation.text_to_image import TextToImageGenerator
     from src.image_generation.image_to_video import ImageToVideoGenerator
+    from src.image_generation.image_editor import ImageEditor
     IMAGE_GENERATION_AVAILABLE = True
 except ImportError:
     IMAGE_GENERATION_AVAILABLE = False
@@ -54,6 +57,8 @@ if IMAGE_GENERATION_AVAILABLE and 'text_to_image' not in st.session_state:
     st.session_state.text_to_image = TextToImageGenerator()
 if IMAGE_GENERATION_AVAILABLE and 'image_to_video' not in st.session_state:
     st.session_state.image_to_video = ImageToVideoGenerator()
+if IMAGE_GENERATION_AVAILABLE and 'image_editor' not in st.session_state:
+    st.session_state.image_editor = ImageEditor()
 
 # 应用自定义CSS样式
 custom_css()
@@ -75,6 +80,7 @@ def main():
             "🎤 语音识别",
             "🎬 视频生成" if VIDEO_GENERATION_AVAILABLE else "🎬 视频生成 (不可用)",
             "🎨 文本生成图片" if IMAGE_GENERATION_AVAILABLE else "🎨 文本生成图片 (不可用)",
+            "🖼️ 图像编辑" if IMAGE_GENERATION_AVAILABLE else "🖼️ 图像编辑 (不可用)",
             "🎞️ 图片转视频" if IMAGE_GENERATION_AVAILABLE and VIDEO_GENERATION_AVAILABLE else "🎞️ 图片转视频 (不可用)",
             "✨ 提示词优化"
         ]
@@ -100,6 +106,8 @@ def main():
         show_video_generation()
     elif page.startswith("🎨 文本生成图片"):
         show_text_to_image()
+    elif page.startswith("🖼️ 图像编辑"):
+        show_image_editing()
     elif page.startswith("🎞️ 图片转视频"):
         show_image_to_video()
     elif page == "✨ 提示词优化":
@@ -123,6 +131,7 @@ def show_home_page():
         - **🎤 语音处理**: Whisper语音识别和智能摘要
         - **🎬 视频制作**: 文本转视频，自动脚本生成
         - **🎨 图像生成**: AI文本生成图片，多种风格支持
+        - **🖼️ 图像编辑**: Qwen-Image-Edit视角转换，风格变换
         - **🎞️ 图片转视频**: 静态图片转动态视频，幻灯片制作
         - **✨ 提示词优化**: 智能分析和优化提示词质量
         
@@ -153,6 +162,9 @@ def show_home_page():
             st.rerun()
         if st.button("🎨 生成图片", use_container_width=True):
             st.session_state.page = "🎨 文本生成图片"
+            st.rerun()
+        if st.button("🖼️ 编辑图片", use_container_width=True):
+            st.session_state.page = "🖼️ 图像编辑"
             st.rerun()
         if st.button("🎞️ 制作视频", use_container_width=True):
             st.session_state.page = "🎞️ 图片转视频"
@@ -1259,6 +1271,879 @@ def show_image_to_video():
                     
                     except Exception as e:
                         st.error(f"❌ 视频创建失败: {str(e)}")
+
+def show_image_editing():
+    """图像编辑页面"""
+    st.header("🖼️ 智能图像编辑")
+    
+    if not IMAGE_GENERATION_AVAILABLE:
+        st.error("""
+        ❌ 图像编辑功能不可用
+        
+        请安装图像编辑依赖：
+        ```bash
+        pip install -r requirements-image.txt
+        ```
+        
+        注意：首次使用需要下载Qwen-Image-Edit模型，请确保有足够的存储空间和网络带宽。
+        """)
+        return
+    
+    st.markdown("""
+    使用Qwen-Image-Edit进行智能图像编辑，支持视角转换、风格变换、环境改变等。
+    上传图片并输入编辑指令，AI将为您智能编辑图像。
+    """)
+    
+    # 文件上传
+    uploaded_file = st.file_uploader(
+        "上传需要编辑的图片",
+        type=['png', 'jpg', 'jpeg', 'webp'],
+        help="支持常见的图片格式"
+    )
+    
+    if uploaded_file is not None:
+        # 显示原图
+        st.subheader("📸 原始图片")
+        original_image = Image.open(uploaded_file)
+        st.image(original_image, caption="原始图片", use_column_width=True)
+        
+        # 编辑选项
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
+            "🎯 自由编辑", 
+            "👁️ 视角转换", 
+            "🎨 风格变换", 
+            "🌍 环境变换", 
+            "🔧 对象变换",
+            "👤 虚拟形象",
+            "🗑️ AI消除",
+            "🎨 AI重绘", 
+            "🌍 虚拟场景",
+            "👗 穿搭模拟",
+            "📝 文字海报"
+        ])
+        
+        with tab1:
+            st.subheader("自由编辑模式")
+            
+            with st.form("free_edit_form"):
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    edit_prompt = st.text_area(
+                        "编辑指令 *",
+                        height=100,
+                        placeholder="例如: 把兔子的颜色改成紫色，添加闪光背景",
+                        help="描述您希望对图片进行的编辑"
+                    )
+                    
+                    negative_prompt = st.text_area(
+                        "负面提示词 (可选)",
+                        height=60,
+                        placeholder="不希望出现的内容",
+                        help="描述不希望在编辑后图片中出现的元素"
+                    )
+                
+                with col2:
+                    true_cfg_scale = st.slider(
+                        "编辑强度",
+                        1.0, 10.0, 4.0, 0.5,
+                        help="控制编辑效果的强度"
+                    )
+                    
+                    num_inference_steps = st.slider(
+                        "推理步数",
+                        20, 100, 50, 5,
+                        help="更多步数通常带来更好的质量"
+                    )
+                    
+                    seed = st.number_input(
+                        "随机种子 (可选)",
+                        min_value=0, max_value=2**32-1, value=0,
+                        help="设置为0使用随机种子"
+                    )
+                    
+                    optimize_prompt = st.checkbox(
+                        "优化提示词",
+                        value=True,
+                        help="使用AI优化您的编辑指令"
+                    )
+                
+                submitted = st.form_submit_button("🖼️ 开始编辑", use_container_width=True)
+            
+            if submitted and edit_prompt:
+                with st.spinner("正在编辑图像，请稍候..."):
+                    try:
+                        result = st.session_state.image_editor.edit_image(
+                            image=original_image,
+                            edit_prompt=edit_prompt,
+                            negative_prompt=negative_prompt,
+                            true_cfg_scale=true_cfg_scale,
+                            num_inference_steps=num_inference_steps,
+                            seed=seed if seed > 0 else None,
+                            optimize_prompt=optimize_prompt
+                        )
+                        
+                        if result:
+                            st.success("✅ 图像编辑成功！")
+                            
+                            # 显示编辑结果
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                st.markdown("**编辑前**")
+                                st.image(result['original_image'], use_column_width=True)
+                            
+                            with col2:
+                                st.markdown("**编辑后**")
+                                st.image(result['edited_image'], use_column_width=True)
+                            
+                            # 显示编辑信息
+                            with st.expander("📊 编辑信息"):
+                                metadata = result['metadata']
+                                col1, col2, col3 = st.columns(3)
+                                
+                                with col1:
+                                    st.metric("编辑强度", metadata['true_cfg_scale'])
+                                    st.metric("推理步数", metadata['num_inference_steps'])
+                                
+                                with col2:
+                                    st.metric("随机种子", metadata['seed'])
+                                    st.text(f"原图尺寸: {metadata['original_size']}")
+                                
+                                with col3:
+                                    st.text(f"编辑时间: {metadata['edited_at'][:19]}")
+                                    st.text(f"编辑后尺寸: {metadata['edited_size']}")
+                                
+                                st.text_area("编辑指令", metadata['edit_prompt'], height=60, key="edit_info")
+                            
+                            # 下载选项
+                            img_bytes = io.BytesIO()
+                            result['edited_image'].save(img_bytes, format='PNG')
+                            img_bytes = img_bytes.getvalue()
+                            
+                            st.download_button(
+                                "📥 下载编辑后的图片",
+                                data=img_bytes,
+                                file_name=f"edited_{uploaded_file.name}",
+                                mime="image/png"
+                            )
+                    
+                    except Exception as e:
+                        st.error(f"❌ 编辑失败: {str(e)}")
+                        if "memory" in str(e).lower():
+                            st.info("💡 提示：如果遇到显存不足错误，可以尝试减少推理步数")
+            
+            elif submitted:
+                st.warning("⚠️ 请输入编辑指令")
+        
+        with tab2:
+            st.subheader("视角转换")
+            
+            # 获取可用的视角选项
+            perspective_options = [
+                "从正面看", "从侧面看", "从背面看",
+                "从上往下看", "从下往上看", "俯视图", "仰视图"
+            ]
+            
+            selected_perspective = st.selectbox(
+                "选择目标视角",
+                perspective_options,
+                help="选择您希望转换到的视角"
+            )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                cfg_scale = st.slider("编辑强度", 1.0, 10.0, 4.0, 0.5, key="perspective_cfg")
+            with col2:
+                steps = st.slider("推理步数", 20, 100, 50, 5, key="perspective_steps")
+            
+            if st.button("🔄 执行视角转换", use_container_width=True):
+                with st.spinner(f"正在转换视角到'{selected_perspective}'..."):
+                    try:
+                        result = st.session_state.image_editor.perspective_transform(
+                            image=original_image,
+                            target_view=selected_perspective,
+                            true_cfg_scale=cfg_scale,
+                            num_inference_steps=steps
+                        )
+                        
+                        if result:
+                            st.success("✅ 视角转换成功！")
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown("**转换前**")
+                                st.image(result['original_image'], use_column_width=True)
+                            with col2:
+                                st.markdown("**转换后**")
+                                st.image(result['edited_image'], use_column_width=True)
+                            
+                            # 下载按钮
+                            img_bytes = io.BytesIO()
+                            result['edited_image'].save(img_bytes, format='PNG')
+                            img_bytes = img_bytes.getvalue()
+                            
+                            st.download_button(
+                                "📥 下载转换后的图片",
+                                data=img_bytes,
+                                file_name=f"perspective_{selected_perspective}_{uploaded_file.name}",
+                                mime="image/png",
+                                key="download_perspective"
+                            )
+                    
+                    except Exception as e:
+                        st.error(f"❌ 视角转换失败: {str(e)}")
+        
+        with tab3:
+            st.subheader("风格变换")
+            
+            style_options = [
+                "油画风格", "水彩风格", "素描风格", "动漫风格",
+                "照片风格", "印象派", "抽象艺术"
+            ]
+            
+            selected_style = st.selectbox(
+                "选择目标风格",
+                style_options,
+                help="选择您希望转换到的艺术风格"
+            )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                cfg_scale = st.slider("转换强度", 1.0, 10.0, 4.0, 0.5, key="style_cfg")
+            with col2:
+                steps = st.slider("推理步数", 20, 100, 50, 5, key="style_steps")
+            
+            if st.button("🎨 执行风格变换", use_container_width=True):
+                with st.spinner(f"正在转换风格到'{selected_style}'..."):
+                    try:
+                        result = st.session_state.image_editor.style_transform(
+                            image=original_image,
+                            target_style=selected_style,
+                            true_cfg_scale=cfg_scale,
+                            num_inference_steps=steps
+                        )
+                        
+                        if result:
+                            st.success("✅ 风格变换成功！")
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown("**变换前**")
+                                st.image(result['original_image'], use_column_width=True)
+                            with col2:
+                                st.markdown("**变换后**")
+                                st.image(result['edited_image'], use_column_width=True)
+                            
+                            # 下载按钮
+                            img_bytes = io.BytesIO()
+                            result['edited_image'].save(img_bytes, format='PNG')
+                            img_bytes = img_bytes.getvalue()
+                            
+                            st.download_button(
+                                "📥 下载变换后的图片",
+                                data=img_bytes,
+                                file_name=f"style_{selected_style}_{uploaded_file.name}",
+                                mime="image/png",
+                                key="download_style"
+                            )
+                    
+                    except Exception as e:
+                        st.error(f"❌ 风格变换失败: {str(e)}")
+        
+        with tab4:
+            st.subheader("环境变换")
+            
+            env_options = [
+                "白天转夜晚", "夜晚转白天", "晴天转雨天",
+                "室内转室外", "现代转古代", "城市转乡村", "春天转秋天"
+            ]
+            
+            selected_env = st.selectbox(
+                "选择环境变换",
+                env_options,
+                help="选择您希望的环境变换类型"
+            )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                cfg_scale = st.slider("变换强度", 1.0, 10.0, 4.0, 0.5, key="env_cfg")
+            with col2:
+                steps = st.slider("推理步数", 20, 100, 50, 5, key="env_steps")
+            
+            if st.button("🌍 执行环境变换", use_container_width=True):
+                with st.spinner(f"正在执行'{selected_env}'变换..."):
+                    try:
+                        result = st.session_state.image_editor.environment_transform(
+                            image=original_image,
+                            target_environment=selected_env,
+                            true_cfg_scale=cfg_scale,
+                            num_inference_steps=steps
+                        )
+                        
+                        if result:
+                            st.success("✅ 环境变换成功！")
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown("**变换前**")
+                                st.image(result['original_image'], use_column_width=True)
+                            with col2:
+                                st.markdown("**变换后**")
+                                st.image(result['edited_image'], use_column_width=True)
+                            
+                            # 下载按钮
+                            img_bytes = io.BytesIO()
+                            result['edited_image'].save(img_bytes, format='PNG')
+                            img_bytes = img_bytes.getvalue()
+                            
+                            st.download_button(
+                                "📥 下载变换后的图片",
+                                data=img_bytes,
+                                file_name=f"env_{selected_env}_{uploaded_file.name}",
+                                mime="image/png",
+                                key="download_env"
+                            )
+                    
+                    except Exception as e:
+                        st.error(f"❌ 环境变换失败: {str(e)}")
+        
+        with tab5:
+            st.subheader("对象变换")
+            
+            transform_types = [
+                "改变颜色", "改变材质", "改变大小", "添加装饰",
+                "改变表情", "改变姿态", "改变服装"
+            ]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                transform_type = st.selectbox(
+                    "变换类型",
+                    transform_types,
+                    help="选择要变换的对象属性"
+                )
+            
+            with col2:
+                transform_value = st.text_input(
+                    "变换目标",
+                    placeholder="例如: 红色、金属、巨大、花朵装饰等",
+                    help="描述变换的目标值"
+                )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                cfg_scale = st.slider("变换强度", 1.0, 10.0, 4.0, 0.5, key="obj_cfg")
+            with col2:
+                steps = st.slider("推理步数", 20, 100, 50, 5, key="obj_steps")
+            
+            if st.button("🔧 执行对象变换", use_container_width=True):
+                if not transform_value:
+                    st.warning("⚠️ 请输入变换目标")
+                else:
+                    with st.spinner(f"正在执行'{transform_type}'到'{transform_value}'..."):
+                        try:
+                            result = st.session_state.image_editor.object_transform(
+                                image=original_image,
+                                transform_type=transform_type,
+                                transform_value=transform_value,
+                                true_cfg_scale=cfg_scale,
+                                num_inference_steps=steps
+                            )
+                            
+                            if result:
+                                st.success("✅ 对象变换成功！")
+                                
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.markdown("**变换前**")
+                                    st.image(result['original_image'], use_column_width=True)
+                                with col2:
+                                    st.markdown("**变换后**")
+                                    st.image(result['edited_image'], use_column_width=True)
+                                
+                                # 下载按钮
+                                img_bytes = io.BytesIO()
+                                result['edited_image'].save(img_bytes, format='PNG')
+                                img_bytes = img_bytes.getvalue()
+                                
+                                st.download_button(
+                                    "📥 下载变换后的图片",
+                                    data=img_bytes,
+                                    file_name=f"obj_{transform_type}_{transform_value}_{uploaded_file.name}",
+                                    mime="image/png",
+                                    key="download_obj"
+                                )
+                        
+                        except Exception as e:
+                            st.error(f"❌ 对象变换失败: {str(e)}")
+        
+        # 新增功能标签页
+        with tab6:
+            st.subheader("👤 虚拟形象生成")
+            st.markdown("生成各种风格的虚拟人物形象")
+            
+            avatar_types = [
+                "生成3D虚拟人", "卡通角色", "动漫人物", 
+                "游戏角色", "商务形象", "时尚模特"
+            ]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                avatar_type = st.selectbox(
+                    "形象类型",
+                    avatar_types,
+                    help="选择要生成的虚拟形象类型"
+                )
+            
+            with col2:
+                description = st.text_area(
+                    "详细描述",
+                    placeholder="例如: 长发女性，蓝色眼睛，微笑表情，现代服装",
+                    help="描述虚拟形象的具体特征"
+                )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                cfg_scale = st.slider("生成强度", 1.0, 10.0, 4.0, 0.5, key="avatar_cfg")
+            with col2:
+                steps = st.slider("推理步数", 20, 100, 50, 5, key="avatar_steps")
+            
+            if st.button("👤 生成虚拟形象", use_container_width=True):
+                with st.spinner(f"正在生成{avatar_type}..."):
+                    try:
+                        result = st.session_state.image_editor.generate_avatar(
+                            avatar_type=avatar_type,
+                            description=description,
+                            true_cfg_scale=cfg_scale,
+                            num_inference_steps=steps
+                        )
+                        
+                        if result:
+                            st.success("✅ 虚拟形象生成成功！")
+                            st.image(result['edited_image'], caption="生成的虚拟形象", use_column_width=True)
+                            
+                            # 下载按钮
+                            img_bytes = io.BytesIO()
+                            result['edited_image'].save(img_bytes, format='PNG')
+                            img_bytes = img_bytes.getvalue()
+                            
+                            st.download_button(
+                                "📥 下载虚拟形象",
+                                data=img_bytes,
+                                file_name=f"avatar_{avatar_type}_{int(time.time())}.png",
+                                mime="image/png",
+                                key="download_avatar"
+                            )
+                    
+                    except Exception as e:
+                        st.error(f"❌ 虚拟形象生成失败: {str(e)}")
+        
+        with tab7:
+            st.subheader("🗑️ AI消除功能")
+            st.markdown("智能移除图像中的对象、水印、背景等")
+            
+            remove_types = [
+                "移除对象", "消除水印", "清除背景", 
+                "去除文字", "消除瑕疵", "删除人物"
+            ]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                remove_type = st.selectbox(
+                    "消除类型",
+                    remove_types,
+                    help="选择要消除的内容类型"
+                )
+            
+            with col2:
+                target_object = st.text_input(
+                    "目标对象",
+                    placeholder="例如: 汽车、文字、人物等（可选）",
+                    help="具体描述要移除的对象"
+                )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                guidance_scale = st.slider("消除强度", 1.0, 20.0, 7.5, 0.5, key="remove_guidance")
+            with col2:
+                steps = st.slider("推理步数", 20, 100, 50, 5, key="remove_steps")
+            
+            if st.button("🗑️ 执行AI消除", use_container_width=True):
+                with st.spinner(f"正在执行{remove_type}..."):
+                    try:
+                        result = st.session_state.image_editor.ai_remove(
+                            image=original_image,
+                            remove_type=remove_type,
+                            target_object=target_object,
+                            guidance_scale=guidance_scale,
+                            num_inference_steps=steps
+                        )
+                        
+                        if result:
+                            st.success("✅ AI消除成功！")
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown("**消除前**")
+                                st.image(result['original_image'], use_column_width=True)
+                            with col2:
+                                st.markdown("**消除后**")
+                                st.image(result['edited_image'], use_column_width=True)
+                            
+                            # 下载按钮
+                            img_bytes = io.BytesIO()
+                            result['edited_image'].save(img_bytes, format='PNG')
+                            img_bytes = img_bytes.getvalue()
+                            
+                            st.download_button(
+                                "📥 下载消除后的图片",
+                                data=img_bytes,
+                                file_name=f"removed_{remove_type}_{uploaded_file.name}",
+                                mime="image/png",
+                                key="download_remove"
+                            )
+                    
+                    except Exception as e:
+                        st.error(f"❌ AI消除失败: {str(e)}")
+        
+        with tab8:
+            st.subheader("🎨 AI重绘功能")
+            st.markdown("重新绘制图像的局部或整体内容")
+            
+            redraw_types = [
+                "局部重绘", "背景重绘", "人物重绘", 
+                "物体重绘", "全图重绘", "细节重绘"
+            ]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                redraw_type = st.selectbox(
+                    "重绘类型",
+                    redraw_types,
+                    help="选择重绘的范围和类型"
+                )
+            
+            with col2:
+                description = st.text_area(
+                    "重绘描述",
+                    placeholder="例如: 改为森林背景、变成卡通风格、添加阳光效果等",
+                    help="描述重绘后的效果"
+                )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                cfg_scale = st.slider("重绘强度", 1.0, 10.0, 4.0, 0.5, key="redraw_cfg")
+            with col2:
+                steps = st.slider("推理步数", 20, 100, 50, 5, key="redraw_steps")
+            
+            if st.button("🎨 执行AI重绘", use_container_width=True):
+                if not description:
+                    st.warning("⚠️ 请输入重绘描述")
+                else:
+                    with st.spinner(f"正在执行{redraw_type}..."):
+                        try:
+                            result = st.session_state.image_editor.ai_redraw(
+                                image=original_image,
+                                redraw_type=redraw_type,
+                                description=description,
+                                true_cfg_scale=cfg_scale,
+                                num_inference_steps=steps
+                            )
+                            
+                            if result:
+                                st.success("✅ AI重绘成功！")
+                                
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.markdown("**重绘前**")
+                                    st.image(result['original_image'], use_column_width=True)
+                                with col2:
+                                    st.markdown("**重绘后**")
+                                    st.image(result['edited_image'], use_column_width=True)
+                                
+                                # 下载按钮
+                                img_bytes = io.BytesIO()
+                                result['edited_image'].save(img_bytes, format='PNG')
+                                img_bytes = img_bytes.getvalue()
+                                
+                                st.download_button(
+                                    "📥 下载重绘后的图片",
+                                    data=img_bytes,
+                                    file_name=f"redrawn_{redraw_type}_{uploaded_file.name}",
+                                    mime="image/png",
+                                    key="download_redraw"
+                                )
+                        
+                        except Exception as e:
+                            st.error(f"❌ AI重绘失败: {str(e)}")
+        
+        with tab9:
+            st.subheader("🌍 虚拟场景生成")
+            st.markdown("将图像转换到不同的虚拟场景环境")
+            
+            scene_types = [
+                "科幻场景", "奇幻世界", "历史场景", 
+                "自然风光", "城市场景", "室内空间"
+            ]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                scene_type = st.selectbox(
+                    "场景类型",
+                    scene_types,
+                    help="选择要生成的虚拟场景类型"
+                )
+            
+            with col2:
+                scene_elements = st.text_input(
+                    "场景元素",
+                    placeholder="例如: 星际飞船、魔法森林、古代城堡等",
+                    help="描述场景的具体元素和特征"
+                )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                cfg_scale = st.slider("场景强度", 1.0, 10.0, 4.0, 0.5, key="scene_cfg")
+            with col2:
+                steps = st.slider("推理步数", 20, 100, 50, 5, key="scene_steps")
+            
+            if st.button("🌍 生成虚拟场景", use_container_width=True):
+                with st.spinner(f"正在生成{scene_type}..."):
+                    try:
+                        result = st.session_state.image_editor.virtual_scene(
+                            image=original_image,
+                            scene_type=scene_type,
+                            scene_elements=scene_elements,
+                            true_cfg_scale=cfg_scale,
+                            num_inference_steps=steps
+                        )
+                        
+                        if result:
+                            st.success("✅ 虚拟场景生成成功！")
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown("**原始场景**")
+                                st.image(result['original_image'], use_column_width=True)
+                            with col2:
+                                st.markdown("**虚拟场景**")
+                                st.image(result['edited_image'], use_column_width=True)
+                            
+                            # 下载按钮
+                            img_bytes = io.BytesIO()
+                            result['edited_image'].save(img_bytes, format='PNG')
+                            img_bytes = img_bytes.getvalue()
+                            
+                            st.download_button(
+                                "📥 下载虚拟场景",
+                                data=img_bytes,
+                                file_name=f"scene_{scene_type}_{uploaded_file.name}",
+                                mime="image/png",
+                                key="download_scene"
+                            )
+                    
+                    except Exception as e:
+                        st.error(f"❌ 虚拟场景生成失败: {str(e)}")
+        
+        with tab10:
+            st.subheader("👗 穿搭模拟功能")
+            st.markdown("模拟不同的服装搭配和风格效果")
+            
+            outfit_types = [
+                "换装试衣", "配饰搭配", "发型变换", 
+                "妆容调整", "颜色搭配", "季节穿搭"
+            ]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                outfit_type = st.selectbox(
+                    "穿搭类型",
+                    outfit_types,
+                    help="选择穿搭模拟的类型"
+                )
+            
+            with col2:
+                outfit_details = st.text_area(
+                    "穿搭详情",
+                    placeholder="例如: 正装西服、休闲T恤、波西米亚长裙等",
+                    help="描述具体的穿搭风格和细节"
+                )
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                cfg_scale = st.slider("穿搭强度", 1.0, 10.0, 4.0, 0.5, key="outfit_cfg")
+            with col2:
+                steps = st.slider("推理步数", 20, 100, 50, 5, key="outfit_steps")
+            
+            if st.button("👗 执行穿搭模拟", use_container_width=True):
+                if not outfit_details:
+                    st.warning("⚠️ 请输入穿搭详情")
+                else:
+                    with st.spinner(f"正在模拟{outfit_type}..."):
+                        try:
+                            result = st.session_state.image_editor.outfit_simulation(
+                                image=original_image,
+                                outfit_type=outfit_type,
+                                outfit_details=outfit_details,
+                                true_cfg_scale=cfg_scale,
+                                num_inference_steps=steps
+                            )
+                            
+                            if result:
+                                st.success("✅ 穿搭模拟成功！")
+                                
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.markdown("**穿搭前**")
+                                    st.image(result['original_image'], use_column_width=True)
+                                with col2:
+                                    st.markdown("**穿搭后**")
+                                    st.image(result['edited_image'], use_column_width=True)
+                                
+                                # 下载按钮
+                                img_bytes = io.BytesIO()
+                                result['edited_image'].save(img_bytes, format='PNG')
+                                img_bytes = img_bytes.getvalue()
+                                
+                                st.download_button(
+                                    "📥 下载穿搭效果",
+                                    data=img_bytes,
+                                    file_name=f"outfit_{outfit_type}_{uploaded_file.name}",
+                                    mime="image/png",
+                                    key="download_outfit"
+                                )
+                        
+                        except Exception as e:
+                            st.error(f"❌ 穿搭模拟失败: {str(e)}")
+        
+        with tab11:
+            st.subheader("📝 文字设计与海报编辑")
+            st.markdown("添加艺术文字和设计各种风格的海报")
+            
+            # 文字设计区域
+            st.markdown("#### 🔤 文字设计")
+            
+            text_types = [
+                "艺术字体", "标题设计", "logo设计", 
+                "书法字体", "立体文字", "霓虹文字"
+            ]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                text_type = st.selectbox(
+                    "文字类型",
+                    text_types,
+                    help="选择文字设计的类型"
+                )
+            
+            with col2:
+                text_content = st.text_input(
+                    "文字内容",
+                    placeholder="输入要添加的文字",
+                    help="输入需要设计的文字内容"
+                )
+            
+            font_style = st.text_input(
+                "字体风格",
+                placeholder="例如: 现代简约、古典优雅、科技感等",
+                help="描述文字的设计风格"
+            )
+            
+            if st.button("📝 添加文字设计", use_container_width=True):
+                if not text_content:
+                    st.warning("⚠️ 请输入文字内容")
+                else:
+                    with st.spinner(f"正在添加{text_type}文字..."):
+                        try:
+                            result = st.session_state.image_editor.text_design(
+                                image=original_image,
+                                text_type=text_type,
+                                text_content=text_content,
+                                font_style=font_style or "modern"
+                            )
+                            
+                            if result:
+                                st.success("✅ 文字设计成功！")
+                                st.image(result['edited_image'], caption="添加文字后的效果", use_column_width=True)
+                                
+                                # 下载按钮
+                                img_bytes = io.BytesIO()
+                                result['edited_image'].save(img_bytes, format='PNG')
+                                img_bytes = img_bytes.getvalue()
+                                
+                                st.download_button(
+                                    "📥 下载文字设计",
+                                    data=img_bytes,
+                                    file_name=f"text_{text_type}_{uploaded_file.name}",
+                                    mime="image/png",
+                                    key="download_text"
+                                )
+                        
+                        except Exception as e:
+                            st.error(f"❌ 文字设计失败: {str(e)}")
+            
+            st.divider()
+            
+            # 海报设计区域
+            st.markdown("#### 🎪 海报编辑")
+            
+            poster_types = [
+                "电影海报", "音乐海报", "活动海报", 
+                "产品海报", "复古海报", "简约海报"
+            ]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                poster_type = st.selectbox(
+                    "海报类型",
+                    poster_types,
+                    help="选择海报设计的类型"
+                )
+            
+            with col2:
+                theme = st.text_input(
+                    "海报主题",
+                    placeholder="例如: 科幻、浪漫、商务、艺术等",
+                    help="描述海报的主题和风格"
+                )
+            
+            if st.button("🎪 设计海报", use_container_width=True):
+                with st.spinner(f"正在设计{poster_type}..."):
+                    try:
+                        result = st.session_state.image_editor.poster_design(
+                            image=original_image,
+                            poster_type=poster_type,
+                            theme=theme
+                        )
+                        
+                        if result:
+                            st.success("✅ 海报设计成功！")
+                            st.image(result['edited_image'], caption="海报设计效果", use_column_width=True)
+                            
+                            # 下载按钮
+                            img_bytes = io.BytesIO()
+                            result['edited_image'].save(img_bytes, format='PNG')
+                            img_bytes = img_bytes.getvalue()
+                            
+                            st.download_button(
+                                "📥 下载海报设计",
+                                data=img_bytes,
+                                file_name=f"poster_{poster_type}_{uploaded_file.name}",
+                                mime="image/png",
+                                key="download_poster"
+                            )
+                    
+                    except Exception as e:
+                        st.error(f"❌ 海报设计失败: {str(e)}")
 
 if __name__ == "__main__":
     main()

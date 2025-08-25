@@ -1,6 +1,6 @@
-# 图像生成可选依赖
-diffusers>=0.21.0
-transformers>=4.35.0
+# 图像生成和编辑可选依赖
+diffusers>=0.25.0
+transformers>=4.37.0
 torch>=2.1.0
 torchvision>=0.16.0
 accelerate>=0.24.0
@@ -8,3 +8,6 @@ xformers>=0.0.22
 compel>=2.0.0
 controlnet-aux>=0.4.0
 invisible-watermark>=0.2.0
+safetensors>=0.3.0
+opencv-python>=4.8.0
+segment-anything>=1.0
